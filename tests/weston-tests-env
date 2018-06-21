@@ -1,0 +1,50 @@
+#!/bin/bash
+
+TESTNAME=$1
+
+if test -z "$TESTNAME"; then
+	echo "usage: $(basename $0) <test name>"
+	exit 1;
+fi
+
+WESTON=$abs_builddir/weston
+LOGDIR=$abs_builddir/logs
+
+mkdir -p "$LOGDIR"
+
+SERVERLOG="$LOGDIR/$1-serverlog.txt"
+OUTLOG="$LOGDIR/$1-log.txt"
+
+rm -f "$SERVERLOG"
+
+if test -z "$BACKEND"; then
+	BACKEND=headless-backend.so
+fi
+
+BACKEND=$abs_builddir/.libs/$BACKEND
+SHELL_PLUGIN=$abs_builddir/.libs/desktop-shell.so
+TEST_PLUGIN=$abs_builddir/.libs/weston-test.so
+XWAYLAND_PLUGIN=$abs_builddir/.libs/xwayland.so
+
+case $TESTNAME in
+	*.la|*.so)
+		WESTON_BUILD_DIR=$abs_builddir \
+		$WESTON --backend=$BACKEND \
+			--no-config \
+			--shell=$SHELL_PLUGIN \
+			--socket=test-$(basename $TESTNAME) \
+			--modules=$abs_builddir/.libs/${TESTNAME/.la/.so},$XWAYLAND_PLUGIN \
+			--log="$SERVERLOG" \
+			&> "$OUTLOG"
+		;;
+	*)
+		WESTON_BUILD_DIR=$abs_builddir \
+		WESTON_TEST_CLIENT_PATH=$abs_builddir/$TESTNAME $WESTON \
+			--socket=test-$(basename $TESTNAME) \
+			--backend=$BACKEND \
+			--no-config \
+			--shell=$SHELL_PLUGIN \
+			--log="$SERVERLOG" \
+			--modules=$TEST_PLUGIN,$XWAYLAND_PLUGIN \
+			&> "$OUTLOG"
+esac
